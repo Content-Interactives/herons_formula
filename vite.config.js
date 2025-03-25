@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/herons-formula/',
+  base: '/herons_formula/',
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
