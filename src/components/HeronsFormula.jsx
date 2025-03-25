@@ -70,7 +70,6 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a})(${s.toFixed(2)}-${b})(${s.toFixed(
   const handleInputChange = (e, setter) => {
     setter(e.target.value);
     setError('');
-    // Keep existing steps
   };
 
   const handleStepInputChange = (e, field) => {
@@ -154,7 +153,6 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a})(${s.toFixed(2)}-${b})(${s.toFixed(
     setSideB(b.toString());
     setSideC(c.toString());
     setError('');
-    // Keep existing steps
   };
 
   return (
