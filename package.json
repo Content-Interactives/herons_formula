@@ -1,6 +1,7 @@
 {
   "name": "herons-formula",
-  "private": true,
+  "private": false,
+  "homepage": "https://TimothyCruzCk12.github.io/herons-formula",
   "version": "0.0.0",
   "type": "module",
   "scripts": {
