@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { Check, X, RefreshCw } from 'lucide-react';
 
-const HeronsFormulaInteractive = () => {
-  const [sideA, setSideA] = useState('');
-  const [sideB, setSideB] = useState('');
-  const [sideC, setSideC] = useState('');
+const HeronsFormula = () => {
+  const [points, setPoints] = useState([
+    { x: 200, y: 100 },
+    { x: 300, y: 100 },
+    { x: 250, y: 200 }
+  ]);
   const [area, setArea] = useState(null);
   const [error, setError] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
@@ -13,14 +15,33 @@ const HeronsFormulaInteractive = () => {
   const [userInputs, setUserInputs] = useState({ semiPerimeter: '', area: '' });
   const [inputStatus, setInputStatus] = useState({ semiPerimeter: null, area: null });
   const [stepCompleted, setStepCompleted] = useState({ semiPerimeter: false, area: false });
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const svgRef = useRef(null);
+
+  const calculateSideLengths = () => {
+    const [p1, p2, p3] = points;
+    const a = Math.sqrt(Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2));
+    const b = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2));
+    const c = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    
+    // Find the maximum possible length in the SVG viewport
+    const maxPossibleLength = Math.sqrt(500 * 500 + 300 * 300);
+    const scaleFactor = 99 / maxPossibleLength;
+    
+    // Scale the lengths to range from 1 to 100
+    const scaledA = Math.max(1, Math.round(a * scaleFactor + 1));
+    const scaledB = Math.max(1, Math.round(b * scaleFactor + 1));
+    const scaledC = Math.max(1, Math.round(c * scaleFactor + 1));
+    
+    return { a: scaledA, b: scaledB, c: scaledC };
+  };
 
   const validateInput = () => {
-    const a = parseFloat(sideA);
-    const b = parseFloat(sideB);
-    const c = parseFloat(sideC);
+    const { a, b, c } = calculateSideLengths();
 
-    if (isNaN(a) || isNaN(b) || isNaN(c) || a <= 0 || b <= 0 || c <= 0 || a > 100 || b > 100 || c > 100 || (a + b <= c) || (b + c <= a) || (a + c <= b)) {
-      setError("Please enter valid side lengths between 0 and 100. The sum of any two sides must be greater than the third side.");
+    if (a <= 0 || b <= 0 || c <= 0 || (a + b <= c) || (b + c <= a) || (a + c <= b)) {
+      setError("Invalid triangle: The sum of any two sides must be greater than the third side.");
       return false;
     }
 
@@ -36,10 +57,7 @@ const HeronsFormulaInteractive = () => {
     }
 
     setIsCalculating(true);
-
-    const a = parseFloat(sideA);
-    const b = parseFloat(sideB);
-    const c = parseFloat(sideC);
+    const { a, b, c } = calculateSideLengths();
     const s = (a + b + c) / 2;
     const areaValue = Math.sqrt(s * (s - a) * (s - b) * (s - c));
 
@@ -47,15 +65,20 @@ const HeronsFormulaInteractive = () => {
       { 
         main: `Step 1: Calculate the semi-perimeter (s)`, 
         formula: `s = (a + b + c) / 2
-s = (${a} + ${b} + ${c}) / 2`, 
+s = (${a.toFixed(2)} + ${b.toFixed(2)} + ${c.toFixed(2)}) / 2`, 
         answer: s.toFixed(2) 
       },
       { 
         main: `Step 2: Apply Heron's Formula to calculate the area`, 
         formula: `A = √(s(s-a)(s-b)(s-c))
-A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a})(${s.toFixed(2)}-${b})(${s.toFixed(2)}-${c}))`,
+A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toFixed(2)})(${s.toFixed(2)}-${c.toFixed(2)}))`,
         answer: areaValue.toFixed(2) 
       },
+      {
+        main: `Step 3: Final Result`,
+        formula: ``,
+        answer: areaValue.toFixed(2)
+      }
     ];
 
     setArea(areaValue.toFixed(2));
@@ -67,9 +90,166 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a})(${s.toFixed(2)}-${b})(${s.toFixed(
     setIsCalculating(false);
   };
 
-  const handleInputChange = (e, setter) => {
-    setter(e.target.value);
-    setError('');
+  const handleMouseDown = useCallback((index, e) => {
+    const svg = svgRef.current;
+    const CTM = svg.getScreenCTM();
+    const point = points[index];
+    
+    // Calculate the offset between the mouse position and the point's position
+    const offsetX = (e.clientX - CTM.e) / CTM.a - point.x;
+    const offsetY = (e.clientY - CTM.f) / CTM.d - point.y;
+    
+    setDragOffset({ x: offsetX, y: offsetY });
+    setDragIndex(index);
+  }, [points]);
+
+  const handleMouseMove = useCallback((e) => {
+    if (dragIndex !== null) {
+      const svg = svgRef.current;
+      const CTM = svg.getScreenCTM();
+      
+      // Calculate the new point position accounting for the offset
+      const x = (e.clientX - CTM.e) / CTM.a - dragOffset.x;
+      const y = (e.clientY - CTM.f) / CTM.d - dragOffset.y;
+      
+      // Constrain points to stay within the padded area (10px from edges)
+      const constrainedX = Math.max(10, Math.min(490, x));
+      const constrainedY = Math.max(10, Math.min(290, y));
+      
+      // Create a temporary new points array with the proposed position
+      const newPoints = [...points];
+      newPoints[dragIndex] = { x: constrainedX, y: constrainedY };
+      
+      // Calculate the side lengths with the new position
+      const [p1, p2, p3] = newPoints;
+      const a = Math.sqrt(Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2));
+      const b = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2));
+      const c = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+      
+      // Find the maximum possible length in the SVG viewport
+      const maxPossibleLength = Math.sqrt(500 * 1000 + 200 * 200);
+      const scaleFactor = 99 / maxPossibleLength;
+      
+      // Check if any scaled length would be less than 1
+      const scaledA = Math.max(1, Math.round(a * scaleFactor + 1));
+      const scaledB = Math.max(1, Math.round(b * scaleFactor + 1));
+      const scaledC = Math.max(1, Math.round(c * scaleFactor + 1));
+      
+      // Only update if all lengths would be at least 1
+      if (scaledA >= 1 && scaledB >= 1 && scaledC >= 1) {
+        setPoints(newPoints);
+      }
+    }
+  }, [dragIndex, dragOffset, points]);
+
+  const handleMouseUp = useCallback(() => {
+    setDragIndex(null);
+    setDragOffset({ x: 0, y: 0 });
+  }, []);
+
+  const getSideLengths = () => {
+    const [p1, p2, p3] = points;
+    const a = Math.sqrt(Math.pow(p2.x - p3.x, 2) + Math.pow(p2.y - p3.y, 2));
+    const b = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2));
+    const c = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    
+    // Find the maximum possible length in the SVG viewport
+    const maxPossibleLength = Math.sqrt(500 * 500 + 300 * 300);
+    const scaleFactor = 99 / maxPossibleLength;
+    
+    // Scale the lengths to range from 1 to 100
+    const scaledA = Math.max(1, Math.round(a * scaleFactor + 1));
+    const scaledB = Math.max(1, Math.round(b * scaleFactor + 1));
+    const scaledC = Math.max(1, Math.round(c * scaleFactor + 1));
+    
+    return { a: scaledA, b: scaledB, c: scaledC };
+  };
+
+  const renderTriangle = () => {
+    const { a, b, c } = getSideLengths();
+    const [p1, p2, p3] = points;
+
+    return (
+      <div className="flex gap-4">
+        {/* Side length legend */}
+        <div className="flex flex-col justify-center gap-2 w-[80px]">
+          <div className="flex items-center justify-center">
+            <span className="text-xs font-medium text-[#FF6B6B] text-center">a = {a}</span>
+          </div>
+          <div className="flex items-center justify-center">
+            <span className="text-xs font-medium text-[#4ECDC4] text-center">b = {b}</span>
+          </div>
+          <div className="flex items-center justify-center">
+            <span className="text-xs font-medium text-[#45B7D1] text-center">c = {c}</span>
+          </div>
+        </div>
+
+        {/* Triangle visualization */}
+        <div className="border border-gray-200 rounded-lg p-4 flex-1 min-w-[300px] min-h-[200px]">
+          <svg 
+            ref={svgRef}
+            viewBox="0 0 500 300" 
+            width="100%" 
+            height="200"
+            className="w-full h-[200px]"
+            style={{ touchAction: 'none' }}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseUp}
+          >
+            {/* Side a (p2-p3) */}
+            <line
+              x1={p2.x}
+              y1={p2.y}
+              x2={p3.x}
+              y2={p3.y}
+              stroke="#FF6B6B"
+              strokeWidth="2"
+            />
+            
+            {/* Side b (p1-p3) */}
+            <line
+              x1={p1.x}
+              y1={p1.y}
+              x2={p3.x}
+              y2={p3.y}
+              stroke="#4ECDC4"
+              strokeWidth="2"
+            />
+            
+            {/* Side c (p1-p2) */}
+            <line
+              x1={p1.x}
+              y1={p1.y}
+              x2={p2.x}
+              y2={p2.y}
+              stroke="#45B7D1"
+              strokeWidth="2"
+            />
+            
+            <polygon
+              points={points.map(p => `${p.x},${p.y}`).join(' ')}
+              fill="#5750E3"
+              fillOpacity="0.1"
+              stroke="none"
+            />
+            {points.map((point, index) => (
+              <circle
+                key={index}
+                cx={point.x}
+                cy={point.y}
+                r="4"
+                fill="#5750E3"
+                stroke="white"
+                strokeWidth="1"
+                style={{ cursor: 'move' }}
+                onMouseDown={(e) => handleMouseDown(index, e)}
+              />
+            ))}
+          </svg>
+        </div>
+      </div>
+    );
   };
 
   const handleStepInputChange = (e, field) => {
@@ -79,9 +259,7 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a})(${s.toFixed(2)}-${b})(${s.toFixed(
 
   const checkStep = (field) => {
     let isCorrect = false;
-    const a = parseFloat(sideA);
-    const b = parseFloat(sideB);
-    const c = parseFloat(sideC);
+    const { a, b, c } = calculateSideLengths();
     const s = (a + b + c) / 2;
     const actualArea = Math.sqrt(s * (s - a) * (s - b) * (s - c));
 
@@ -104,9 +282,7 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a})(${s.toFixed(2)}-${b})(${s.toFixed(
   };
 
   const skipStep = (field) => {
-    const a = parseFloat(sideA);
-    const b = parseFloat(sideB);
-    const c = parseFloat(sideC);
+    const { a, b, c } = calculateSideLengths();
     const s = (a + b + c) / 2;
     const actualArea = Math.sqrt(s * (s - a) * (s - b) * (s - c));
 
@@ -139,118 +315,150 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a})(${s.toFixed(2)}-${b})(${s.toFixed(
     };
   };
 
-  const generateRandomSides = () => {
-    let a, b, c;
-    do {
-      a = Math.floor(Math.random() * 100) + 1;
-      b = Math.floor(Math.random() * 100) + 1;
-      const min = Math.abs(a - b) + 1;
-      const max = Math.min(a + b - 1, 100);
-      c = Math.floor(Math.random() * (max - min + 1)) + min;
-    } while (a + b <= c || b + c <= a || a + c <= b);
-
-    setSideA(a.toString());
-    setSideB(b.toString());
-    setSideC(c.toString());
-    setError('');
-  };
-
   return (
-    <div className="bg-gray-100 p-8 min-h-screen">
-      <div className="w-full max-w-2xl mx-auto shadow-md bg-white">
-        <div className="space-y-6 p-6">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <div className="flex-grow flex space-x-2">
-                <input
-                  type="number"
-                  value={sideA}
-                  onChange={(e) => handleInputChange(e, setSideA)}
-                  placeholder="Side A"
-                  className="w-1/3 text-lg border border-gray-200 p-2 rounded focus:outline-none focus:border-blue-400"
-                />
-                <input
-                  type="number"
-                  value={sideB}
-                  onChange={(e) => handleInputChange(e, setSideB)}
-                  placeholder="Side B"
-                  className="w-1/3 text-lg border border-gray-200 p-2 rounded focus:outline-none focus:border-blue-400"
-                />
-                <input
-                  type="number"
-                  value={sideC}
-                  onChange={(e) => handleInputChange(e, setSideC)}
-                  placeholder="Side C"
-                  className="w-1/3 text-lg border border-gray-200 p-2 rounded focus:outline-none focus:border-blue-400"
-                />
-              </div>
-              <button 
-                onClick={generateRandomSides}
-                className="flex items-center bg-sky-500 hover:bg-sky-600 text-white p-2 rounded h-10 whitespace-nowrap"
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Random
-              </button>
+    <div className={`w-[500px] h-auto mx-auto mt-5 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-2px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.05)] bg-white rounded-lg overflow-hidden`}>
+      <div className="p-4">
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">Drag the points to change the lengths of the triangle:</p>
+          <div className="relative">
+            {renderTriangle()}
             </div>
             {error && (
-              <p className="text-sm text-red-500">{error}</p>
+            <p className="text-xs text-red-500">{error}</p>
             )}
             <button 
               onClick={calculateArea} 
-              className="w-full bg-emerald-400 hover:bg-emerald-500 text-white text-xl py-6 rounded"
+            className="w-full bg-[#008545] hover:bg-[#00703d] text-white text-sm py-2 rounded"
               disabled={isCalculating}
             >
               {isCalculating ? 'Calculating...' : 'Calculate Area'}
             </button>
           </div>
         </div>
-        <div className="flex-col items-start bg-gray-50 p-4">
+      
           {steps.length > 0 && (
-            <div className="w-full space-y-2">
-              <p className="font-semibold text-purple-600">Calculation Steps:</p>
-              {steps.slice(0, currentStepIndex + 1).map((step, index) => (
-                <div key={index} className="bg-purple-50 p-2 rounded">
-                  <p>{step.main}</p>
-                  <pre className="text-sm whitespace-pre-wrap">{step.formula}</pre>
-                  {stepCompleted[Object.keys(stepCompleted)[index]] && (
-                    <p className="text-green-600">
-                      = {step.answer}
-                    </p>
-                  )}
-                  {index === currentStepIndex && !stepCompleted[Object.keys(stepCompleted)[index]] && (
-                    <div className="flex items-center space-x-1 text-sm mt-2">
-                      <input
-                        type="number"
-                        value={userInputs[Object.keys(userInputs)[index]]}
-                        onChange={(e) => handleStepInputChange(e, Object.keys(userInputs)[index])}
-                        placeholder={`Enter ${Object.keys(userInputs)[index]}`}
-                        className={getInputClassName(Object.keys(userInputs)[index])}
-                        style={getInputStyle(Object.keys(userInputs)[index])}
-                      />
-                      <button 
-                        onClick={() => checkStep(Object.keys(userInputs)[index])} 
-                        className="bg-blue-400 hover:bg-blue-500 text-white px-2 py-1 text-xs rounded"
-                      >
-                        Check
-                      </button>
-                      <button 
-                        onClick={() => skipStep(Object.keys(userInputs)[index])} 
-                        className="bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 text-xs rounded"
-                      >
-                        Skip
-                      </button>
-                      {inputStatus[Object.keys(userInputs)[index]] === 'correct' && <Check className="text-green-500 w-4 h-4" />}
-                      {inputStatus[Object.keys(userInputs)[index]] === 'incorrect' && <X className="text-red-500 w-4 h-4" />}
+        <div className="p-4 bg-gray-50">
+          <div className="space-y-2">
+            <h3 className="text-[#5750E3] text-sm font-medium mb-2">
+              Steps to calculate the area:
+            </h3>
+            <div className="space-y-4">
+              <div className="w-full p-2 mb-1 bg-white border border-[#5750E3]/30 rounded-md">
+                {currentStepIndex === 0 ? (
+                  <>
+                    <p className="text-sm">{steps[currentStepIndex].main}</p>
+                    <pre className="text-sm whitespace-pre-wrap mt-1">{steps[currentStepIndex].formula}</pre>
+                    {stepCompleted[Object.keys(stepCompleted)[currentStepIndex]] && (
+                      <p className="text-sm text-[#008545] font-medium mt-1">
+                        = {steps[currentStepIndex].answer}
+                      </p>
+                    )}
+                    {!stepCompleted[Object.keys(stepCompleted)[currentStepIndex]] && (
+                      <div className="flex items-center space-x-1 mt-2">
+                        <input
+                          type="number"
+                          value={userInputs[Object.keys(userInputs)[currentStepIndex]]}
+                          onChange={(e) => handleStepInputChange(e, Object.keys(userInputs)[currentStepIndex])}
+                          placeholder={`Enter ${Object.keys(userInputs)[currentStepIndex]}`}
+                          className={`w-full text-sm p-1 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#5750E3] ${
+                            inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'correct'
+                              ? 'border-green-500'
+                              : inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'incorrect'
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                          style={getInputStyle(Object.keys(userInputs)[currentStepIndex])}
+                        />
+                        <button 
+                          onClick={() => checkStep(Object.keys(userInputs)[currentStepIndex])} 
+                          className="bg-[#5750E3] hover:bg-[#4a42c7] text-white text-sm px-3 py-1 rounded-md"
+                        >
+                          Check
+                        </button>
+                        <button 
+                          onClick={() => skipStep(Object.keys(userInputs)[currentStepIndex])} 
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-3 py-1 rounded-md"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : currentStepIndex === 1 ? (
+                  <>
+                    <p className="text-sm">{steps[currentStepIndex].main}</p>
+                    <pre className="text-sm whitespace-pre-wrap mt-1">{steps[currentStepIndex].formula}</pre>
+                    {stepCompleted[Object.keys(stepCompleted)[currentStepIndex]] && (
+                      <p className="text-sm text-[#008545] font-medium mt-1">
+                        = {steps[currentStepIndex].answer}
+                      </p>
+                    )}
+                    {!stepCompleted[Object.keys(stepCompleted)[currentStepIndex]] && (
+                      <div className="flex items-center space-x-1 mt-2">
+                        <input
+                          type="number"
+                          value={userInputs[Object.keys(userInputs)[currentStepIndex]]}
+                          onChange={(e) => handleStepInputChange(e, Object.keys(userInputs)[currentStepIndex])}
+                          placeholder={`Enter ${Object.keys(userInputs)[currentStepIndex]}`}
+                          className={`w-full text-sm p-1 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#5750E3] ${
+                            inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'correct'
+                              ? 'border-green-500'
+                              : inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'incorrect'
+                              ? 'border-red-500'
+                              : 'border-gray-300'
+                          }`}
+                          style={getInputStyle(Object.keys(userInputs)[currentStepIndex])}
+                        />
+                        <button 
+                          onClick={() => checkStep(Object.keys(userInputs)[currentStepIndex])} 
+                          className="bg-[#5750E3] hover:bg-[#4a42c7] text-white text-sm px-3 py-1 rounded-md"
+                        >
+                          Check
+                        </button>
+                        <button 
+                          onClick={() => skipStep(Object.keys(userInputs)[currentStepIndex])} 
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-3 py-1 rounded-md"
+                        >
+                          Skip
+                        </button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm">Step 3: Calculation Complete!</p>
+                    <div className="mt-2 flex justify-center items-center gap-1">
+                      <p className="text-[#008545] text-xl font-bold">{steps[1].answer} square units</p>
                     </div>
-                  )}
-                </div>
-              ))}
+                  </>
+                )}
+              </div>
+              
+              <div className="flex items-center justify-between mt-4">
+                <button
+                  onClick={() => setCurrentStepIndex(prev => Math.max(0, prev - 1))}
+                  disabled={currentStepIndex === 0}
+                  className="w-24 p-1 rounded-md bg-gray-200 text-gray-700 text-sm hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  ← Previous
+                </button>
+                <span className="text-sm text-gray-500">
+                  Step {currentStepIndex + 1} of {steps.length}
+                </span>
+                <button
+                  onClick={() => setCurrentStepIndex(prev => Math.min(steps.length - 1, prev + 1))}
+                  disabled={currentStepIndex === steps.length - 1 || (currentStepIndex < 2 && !stepCompleted[Object.keys(stepCompleted)[currentStepIndex]])}
+                  className="w-24 p-1 rounded-md bg-[#5750E3] text-white text-sm hover:bg-[#4a42c7] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next →
+                </button>
+              </div>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export default HeronsFormulaInteractive;
+export default HeronsFormula;
