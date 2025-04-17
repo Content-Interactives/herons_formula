@@ -95,9 +95,11 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
     const CTM = svg.getScreenCTM();
     const point = points[index];
     
-    // Calculate the offset between the mouse position and the point's position
-    const offsetX = (e.clientX - CTM.e) / CTM.a - point.x;
-    const offsetY = (e.clientY - CTM.f) / CTM.d - point.y;
+    // Calculate the offset between the touch/mouse position and the point's position
+    const clientX = e.clientX || e.touches[0].clientX;
+    const clientY = e.clientY || e.touches[0].clientY;
+    const offsetX = (clientX - CTM.e) / CTM.a - point.x;
+    const offsetY = (clientY - CTM.f) / CTM.d - point.y;
     
     setDragOffset({ x: offsetX, y: offsetY });
     setDragIndex(index);
@@ -108,9 +110,15 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
       const svg = svgRef.current;
       const CTM = svg.getScreenCTM();
       
+      // Get touch or mouse coordinates
+      const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+      const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+      
+      if (!clientX || !clientY) return;
+      
       // Calculate the new point position accounting for the offset
-      const x = (e.clientX - CTM.e) / CTM.a - dragOffset.x;
-      const y = (e.clientY - CTM.f) / CTM.d - dragOffset.y;
+      const x = (clientX - CTM.e) / CTM.a - dragOffset.x;
+      const y = (clientY - CTM.f) / CTM.d - dragOffset.y;
       
       // Constrain points to stay within the padded area (10px from edges)
       const constrainedX = Math.max(10, Math.min(490, x));
@@ -196,6 +204,8 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
+            onTouchMove={handleMouseMove}
+            onTouchEnd={handleMouseUp}
           >
             {/* Side a (p2-p3) */}
             <line
@@ -238,12 +248,13 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
                 key={index}
                 cx={point.x}
                 cy={point.y}
-                r="4"
+                r="8"
                 fill="#5750E3"
                 stroke="white"
                 strokeWidth="1"
                 style={{ cursor: 'move' }}
                 onMouseDown={(e) => handleMouseDown(index, e)}
+                onTouchStart={(e) => handleMouseDown(index, e)}
               />
             ))}
           </svg>
@@ -303,7 +314,7 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
       case 'correct':
         return `${baseClass} border-green-500`;
       case 'incorrect':
-        return `${baseClass} border-red-500`;
+        return `${baseClass} border-yellow-500`;
       default:
         return `${baseClass} border-gray-300`;
     }
@@ -360,24 +371,24 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
                           value={userInputs[Object.keys(userInputs)[currentStepIndex]]}
                           onChange={(e) => handleStepInputChange(e, Object.keys(userInputs)[currentStepIndex])}
                           placeholder={`Enter ${Object.keys(userInputs)[currentStepIndex]}`}
-                          className={`w-full text-sm p-1 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#5750E3] ${
+                          className={`w-full text-sm p-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#5750E3] ${
                             inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'correct'
                               ? 'border-green-500'
                               : inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'incorrect'
-                              ? 'border-red-500'
+                              ? 'border-yellow-500'
                               : 'border-gray-300'
                           }`}
                           style={getInputStyle(Object.keys(userInputs)[currentStepIndex])}
                         />
                         <button 
                           onClick={() => checkStep(Object.keys(userInputs)[currentStepIndex])} 
-                          className="bg-[#5750E3] hover:bg-[#4a42c7] text-white text-sm px-3 py-1 rounded-md"
+                          className="bg-[#5750E3] hover:bg-[#4a42c7] text-white text-sm px-4 py-2 rounded-md min-w-[80px]"
                         >
                           Check
                         </button>
                         <button 
                           onClick={() => skipStep(Object.keys(userInputs)[currentStepIndex])} 
-                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-3 py-1 rounded-md"
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-4 py-2 rounded-md min-w-[80px]"
                         >
                           Skip
                         </button>
@@ -400,24 +411,24 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
                           value={userInputs[Object.keys(userInputs)[currentStepIndex]]}
                           onChange={(e) => handleStepInputChange(e, Object.keys(userInputs)[currentStepIndex])}
                           placeholder={`Enter ${Object.keys(userInputs)[currentStepIndex]}`}
-                          className={`w-full text-sm p-1 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#5750E3] ${
+                          className={`w-full text-sm p-2 border rounded-md focus:outline-none focus:ring-1 focus:ring-[#5750E3] ${
                             inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'correct'
                               ? 'border-green-500'
                               : inputStatus[Object.keys(userInputs)[currentStepIndex]] === 'incorrect'
-                              ? 'border-red-500'
+                              ? 'border-yellow-500'
                               : 'border-gray-300'
                           }`}
                           style={getInputStyle(Object.keys(userInputs)[currentStepIndex])}
                         />
                         <button 
                           onClick={() => checkStep(Object.keys(userInputs)[currentStepIndex])} 
-                          className="bg-[#5750E3] hover:bg-[#4a42c7] text-white text-sm px-3 py-1 rounded-md"
+                          className="bg-[#5750E3] hover:bg-[#4a42c7] text-white text-sm px-4 py-2 rounded-md min-w-[80px]"
                         >
                           Check
                         </button>
                         <button 
                           onClick={() => skipStep(Object.keys(userInputs)[currentStepIndex])} 
-                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-3 py-1 rounded-md"
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm px-4 py-2 rounded-md min-w-[80px]"
                         >
                           Skip
                         </button>
