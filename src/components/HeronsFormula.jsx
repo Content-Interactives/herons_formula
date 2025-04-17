@@ -124,7 +124,6 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
       const constrainedX = Math.max(10, Math.min(490, x));
       const constrainedY = Math.max(10, Math.min(290, y));
       
-      // Create a temporary new points array with the proposed position
       const newPoints = [...points];
       newPoints[dragIndex] = { x: constrainedX, y: constrainedY };
       
