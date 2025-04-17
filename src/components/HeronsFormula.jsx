@@ -143,7 +143,6 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
       const scaledB = Math.max(1, Math.round(b * scaleFactor + 1));
       const scaledC = Math.max(1, Math.round(c * scaleFactor + 1));
       
-      // Only update if all lengths would be at least 1
       if (scaledA >= 1 && scaledB >= 1 && scaledC >= 1) {
         setPoints(newPoints);
       }
@@ -161,11 +160,9 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
     const b = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2));
     const c = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
     
-    // Find the maximum possible length in the SVG viewport
     const maxPossibleLength = Math.sqrt(500 * 500 + 300 * 300);
     const scaleFactor = 99 / maxPossibleLength;
     
-    // Scale the lengths to range from 1 to 100
     const scaledA = Math.max(1, Math.round(a * scaleFactor + 1));
     const scaledB = Math.max(1, Math.round(b * scaleFactor + 1));
     const scaledC = Math.max(1, Math.round(c * scaleFactor + 1));
