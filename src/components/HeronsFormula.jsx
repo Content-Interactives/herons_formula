@@ -14,6 +14,7 @@ const HeronsFormula = () => {
   const [userInputs, setUserInputs] = useState({ semiPerimeter: '', area: '' });
   const [inputStatus, setInputStatus] = useState({ semiPerimeter: null, area: null });
   const [stepCompleted, setStepCompleted] = useState({ semiPerimeter: false, area: false });
+  const [stepSkipped, setStepSkipped] = useState({ semiPerimeter: false, area: false });
   const [dragIndex, setDragIndex] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isGlowActive, setIsGlowActive] = useState(true);
@@ -24,12 +25,17 @@ const HeronsFormula = () => {
 
   // Add useEffect to handle navigation button visibility
   useEffect(() => {
-    // Show navigation buttons when both steps are completed
+    // Show navigation buttons when both steps are completed and we're on the final step
     if (stepCompleted.semiPerimeter && stepCompleted.area) {
-      setShowNavigationButtons(true);
-      setLeftButtonVisible(true);
+      if (currentStepIndex === 2) {
+        setShowNavigationButtons(true);
+        setLeftButtonVisible(true);
+      }
+    } else {
+      setShowNavigationButtons(false);
+      setLeftButtonVisible(false);
     }
-  }, [stepCompleted]);
+  }, [stepCompleted, currentStepIndex]);
 
   const calculateSideLengths = () => {
     const [p1, p2, p3] = points;
@@ -61,7 +67,7 @@ const HeronsFormula = () => {
     return true;
   };
 
-  const calculateArea = () => {
+  const calculateSteps = () => {
     if (!validateInput()) {
       setArea(null);
       setSteps([]);
@@ -73,6 +79,7 @@ const HeronsFormula = () => {
     setIsGlowActive(false);  // Disable the glow effect when calculating
     setShowNavigationButtons(false); // Hide navigation buttons when calculating new area
     setStepCompleted({ semiPerimeter: false, area: false }); // Reset step completion
+    setStepSkipped({ semiPerimeter: false, area: false }); // Reset step skipped state
     const { a, b, c } = calculateSideLengths();
     const s = (a + b + c) / 2;
     const areaValue = Math.sqrt(s * (s - a) * (s - b) * (s - c));
@@ -297,9 +304,7 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
     setInputStatus({ ...inputStatus, [field]: isCorrect ? 'correct' : 'incorrect' });
     if (isCorrect) {
       setStepCompleted(prev => ({ ...prev, [field]: true }));
-      if (currentStepIndex < steps.length - 1) {
-        setCurrentStepIndex(currentStepIndex + 1);
-      }
+      setStepSkipped(prev => ({ ...prev, [field]: false }));
     }
   };
 
@@ -313,10 +318,8 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
       [field]: field === 'semiPerimeter' ? s.toFixed(2) : actualArea.toFixed(2) 
     });
     setInputStatus({ ...inputStatus, [field]: 'correct' });
-    setStepCompleted({ ...stepCompleted, [field]: true });
-    if (currentStepIndex < steps.length - 1) {
-      setCurrentStepIndex(currentStepIndex + 1);
-    }
+    setStepCompleted(prev => ({ ...prev, [field]: true }));
+    setStepSkipped(prev => ({ ...prev, [field]: true }));
   };
 
   const getInputClassName = (field) => {
@@ -466,7 +469,7 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
             )}
             <div className={`glow-button ${isGlowActive ? 'simple-glow' : 'simple-glow stopped'}`}>
               <button 
-                onClick={calculateArea} 
+                onClick={calculateSteps} 
                 className="w-full bg-[#008545] hover:bg-[#00703d] text-white text-sm py-2 rounded"
                 disabled={isCalculating}
               >
@@ -527,6 +530,27 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
                           </div>
                         </div>
                       )}
+                      {stepCompleted[Object.keys(stepCompleted)[currentStepIndex]] && !showNavigationButtons && (
+                        <div className="flex items-center gap-4 mt-2 justify-end">
+                          {!stepSkipped[Object.keys(stepSkipped)[currentStepIndex]] && (
+                            <span className="text-green-600 font-bold select-none">Great Job!</span>
+                          )}
+                          {currentStepIndex < steps.length - 1 && (
+                            <div className="glow-button simple-glow">
+                              <button 
+                                onClick={() => {
+                                  if (currentStepIndex < steps.length - 1) {
+                                    setCurrentStepIndex(prev => prev + 1);
+                                  }
+                                }}
+                                className="bg-[#008545] hover:bg-[#00703d] text-white text-sm px-4 py-2 rounded-md min-w-[80px]"
+                              >
+                                Continue
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </>
                   ) : currentStepIndex === 1 ? (
                     <>
@@ -569,6 +593,27 @@ A = √(${s.toFixed(2)}(${s.toFixed(2)}-${a.toFixed(2)})(${s.toFixed(2)}-${b.toF
                               </button>
                             </div>
                           </div>
+                        </div>
+                      )}
+                      {stepCompleted[Object.keys(stepCompleted)[currentStepIndex]] && !showNavigationButtons && (
+                        <div className="flex items-center gap-4 mt-2 justify-end">
+                          {!stepSkipped[Object.keys(stepSkipped)[currentStepIndex]] && (
+                            <span className="text-green-600 font-bold select-none">Great Job!</span>
+                          )}
+                          {currentStepIndex < steps.length - 1 && (
+                            <div className="glow-button simple-glow">
+                              <button 
+                                onClick={() => {
+                                  if (currentStepIndex < steps.length - 1) {
+                                    setCurrentStepIndex(prev => prev + 1);
+                                  }
+                                }}
+                                className="bg-[#008545] hover:bg-[#00703d] text-white text-sm px-4 py-2 rounded-md min-w-[80px]"
+                              >
+                                Continue
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
