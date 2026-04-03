@@ -1,41 +1,54 @@
 # Heron's Formula
 
-The **Heron's Formula** interactive demonstrates how to calculate the area of a triangle when the lengths of all three sides are known. Students can explore examples and see how the formula works step by step.
+React + Vite tool: given triangle side lengths \(a,b,c\), computes semiperimeter \(s\) and area \(\sqrt{s(s-a)(s-b)(s-c)}\). Implementation in `HeronsFormula.jsx`.
+
+**Live site:** [https://content-interactives.github.io/herons_formula](https://content-interactives.github.io/herons_formula)
+
+Curriculum alignment and placement: [Standards.md](Standards.md).
 
 ---
 
-## 🔗 Live Interactive
+## Stack
 
-Try it out here:  
-👉 [https://content-interactives.github.io/herons_formula](https://content-interactives.github.io/herons_formula)
-
----
-
-## 🌐 Where This Interactive Is Being Used
-
-This interactive is currently featured in the following locations:
-
-- <img width="20" height="20" alt="image" src="https://github.com/user-attachments/assets/5d12571f-8e12-4441-98ab-c0bc94069a96" /> **CK-12 Intent Response**  
-  - 👉 PRODUCTION: PENDING  
-  - 👉 MASTER: PENDING  
-- 📘 **CK-12 Flexbooks**
-  - 👉 PENDING
+| Layer | Notes |
+|--------|--------|
+| Build | Vite 6, `@vitejs/plugin-react` |
+| UI | React 19 |
+| Styling | Tailwind 3 |
+| Icons | lucide-react |
+| Deploy | `gh-pages -d dist`; `predeploy` runs `vite build` |
 
 ---
 
-## 📚 Standards & Subjects
+## Layout
 
-This interactive aligns with the following topics and standards:
-
-- **📂 Subject Area**: Middle School Math (Grade 8)  
-- **🧮 Topic**: Geometry – Triangle Area  
-- **📏 Common Core**:  
-  - 8.G.C.9 – Know the formulas for the volumes of cones, cylinders, and spheres and use them to solve real-world and mathematical problems.  
-  - 8.EE.A.2 – Use square root and cube root symbols to represent solutions to equations. Evaluate square roots of small perfect squares.
+```
+vite.config.js          # base: '/herons_formula/'
+src/
+  main.jsx → App.jsx → components/HeronsFormula.jsx
+  components/ui/
+```
 
 ---
 
-## 🛠️ Developer Notes
+## `vite.config.js`
 
-- Built with: React, HTML, CSS, JavaScript  
-- Deployed via GitHub Pages
+`base: '/herons_formula/'` must match the GitHub Pages repository path.
+
+---
+
+## Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Vite dev server |
+| `npm run build` | Production build → `dist/` |
+| `npm run preview` | Preview production build |
+| `npm run lint` | ESLint |
+| `npm run deploy` | Build and push `dist/` to `gh-pages` |
+
+---
+
+## Embedding
+
+Validate triangle inequality handling in `HeronsFormula.jsx` when reusing inputs from host pages.
